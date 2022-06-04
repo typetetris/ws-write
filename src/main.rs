@@ -3,21 +3,25 @@ use axum::{
     Router, extract::{Path, ws::{self, WebSocket}}, response::IntoResponse,
 };
 use tokio::{io::AsyncWriteExt, fs};
+use tracing_bunyan_formatter::BunyanFormattingLayer;
+use tracing_subscriber::{Registry, layer::SubscriberExt};
 use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
     // initialize tracing
-    tracing_subscriber::fmt::init();
+    let formatting_layer = BunyanFormattingLayer::new("tracing_demo".into(), std::io::stdout);
+    let subscriber = Registry::default().with(formatting_layer);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
-        .route("/*", get(root));
+        .route("/*path", get(root));
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 7777));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
