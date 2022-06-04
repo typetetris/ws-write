@@ -35,9 +35,13 @@ async fn root(Path(path): Path<String>, ws: ws::WebSocketUpgrade, headers: Heade
     let mut open_options = fs::OpenOptions::new();
     let handle = open_options.write(true).truncate(true).create(true).open(sane_path).await.unwrap();
 
-    for (k,v) in headers.iter() {
-        tracing::debug!("{}: {:#?}", k, v);
-    }
+    let protocols: Vec<_> = headers.get_all("sec-websocket-protocol").iter().map(|v| v.to_str().unwrap().to_string()).collect();
+
+    let ws = if !protocols.is_empty() {
+        ws.protocols(protocols)
+    } else {
+        ws
+    };
 
     ws.on_upgrade(move |socket| {
         async {
