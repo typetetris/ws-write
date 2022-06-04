@@ -1,6 +1,6 @@
 use axum::{
     routing::get,
-    Router, extract::{Path, ws::{self, WebSocket}}, response::IntoResponse,
+    Router, extract::{Path, ws::{self, WebSocket}}, response::IntoResponse, http::HeaderMap,
 };
 use tokio::{io::AsyncWriteExt, fs};
 use tracing_bunyan_formatter::BunyanFormattingLayer;
@@ -30,10 +30,14 @@ async fn main() {
 }
 
 // basic handler that responds with a static string
-async fn root(Path(path): Path<String>, ws: ws::WebSocketUpgrade) -> impl IntoResponse {
+async fn root(Path(path): Path<String>, ws: ws::WebSocketUpgrade, headers: HeaderMap) -> impl IntoResponse {
     let sane_path = format!("./{}", path.replace('/', "_"));
     let mut open_options = fs::OpenOptions::new();
     let handle = open_options.write(true).truncate(true).create(true).open(sane_path).await.unwrap();
+
+    for (k,v) in headers.iter() {
+        tracing::debug!("{}: {:#?}", k, v);
+    }
 
     ws.on_upgrade(move |socket| {
         async {
